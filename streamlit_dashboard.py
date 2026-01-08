@@ -59,18 +59,110 @@ st.markdown("""
 # LOAD DATA
 # ============================================
 @st.cache_data
+def create_sample_data():
+    """Create sample data for demo purposes when actual data is not available"""
+    # Sample stress data
+    states = ['Uttar Pradesh', 'Maharashtra', 'Bihar', 'West Bengal', 'Madhya Pradesh', 
+              'Tamil Nadu', 'Rajasthan', 'Karnataka', 'Gujarat', 'Andhra Pradesh']
+    districts = ['District A', 'District B', 'District C', 'District D', 'District E']
+    
+    stress_data = pd.DataFrame({
+        'state': np.random.choice(states, 100),
+        'district': np.random.choice(districts, 100),
+        'stress_index': np.random.uniform(20, 95, 100),
+        'total_demographic_updates': np.random.randint(1000, 50000, 100),
+        'total_enrolments': np.random.randint(5000, 100000, 100),
+        'demo_age_5_17': np.random.randint(500, 20000, 100),
+        'demo_age_17_': np.random.randint(500, 30000, 100),
+        'recommended_capacity_increase': np.random.uniform(2, 10, 100)
+    })
+    stress_data['alert_level'] = pd.cut(
+        stress_data['stress_index'],
+        bins=[0, 25, 50, 75, 100],
+        labels=['Low', 'Medium', 'High', 'Critical']
+    )
+    
+    # Sample churn data
+    churn_data = pd.DataFrame({
+        'state': np.random.choice(states, 100),
+        'district': np.random.choice(districts, 100),
+        'churn_rate': np.random.uniform(10, 250, 100),
+        'total_updates': np.random.randint(1000, 50000, 100),
+        'record_count': np.random.randint(5000, 100000, 100)
+    })
+    churn_data['risk_level'] = pd.cut(
+        churn_data['churn_rate'],
+        bins=[0, 50, 100, 200, float('inf')],
+        labels=['Stable', 'Moderate', 'High Activity', 'Critical']
+    )
+    churn_data = churn_data.set_index(['state', 'district'])
+    
+    # Sample seasonality data
+    months = ['January', 'February', 'March', 'April', 'May', 'June', 
+              'July', 'August', 'September', 'October', 'November', 'December']
+    seasonality_data = pd.DataFrame({
+        'month_name': months,
+        'total_monthly_updates': np.random.randint(50000, 200000, 12),
+        'demo_age_5_17': np.random.randint(20000, 80000, 12),
+        'demo_age_17_': np.random.randint(30000, 120000, 12)
+    })
+    
+    # Sample migration data
+    migration_data = pd.DataFrame({
+        'state': np.random.choice(states, 50),
+        'district': np.random.choice(districts, 50),
+        'avg_updates_per_record': np.random.uniform(5, 25, 50)
+    })
+    
+    # Dashboard data (combination)
+    dashboard_data = stress_data.copy()
+    
+    return dashboard_data, churn_data, stress_data, seasonality_data, migration_data
+
+@st.cache_data
 def load_dashboard_data():
     """Load all processed analytics data"""
-    try:
-        dashboard_data = pd.read_csv('analysis_results/dashboard_master_data.csv')
-        churn_data = pd.read_csv('analysis_results/churn_rate_analysis.csv')
-        stress_data = pd.read_csv('analysis_results/infrastructure_stress_index.csv')
-        seasonality_data = pd.read_csv('analysis_results/seasonality_analysis.csv')
-        migration_data = pd.read_csv('analysis_results/migration_hotspots.csv')
-        return dashboard_data, churn_data, stress_data, seasonality_data, migration_data
-    except FileNotFoundError:
-        st.error("⚠️ Analytics files not found! Please run 'advanced_analytics.py' first.")
-        st.stop()
+    import os
+    
+    # Check if analysis results exist
+    files_exist = all([
+        os.path.exists('analysis_results/dashboard_master_data.csv'),
+        os.path.exists('analysis_results/churn_rate_analysis.csv'),
+        os.path.exists('analysis_results/infrastructure_stress_index.csv'),
+        os.path.exists('analysis_results/seasonality_analysis.csv'),
+        os.path.exists('analysis_results/migration_hotspots.csv')
+    ])
+    
+    if files_exist:
+        try:
+            dashboard_data = pd.read_csv('analysis_results/dashboard_master_data.csv')
+            churn_data = pd.read_csv('analysis_results/churn_rate_analysis.csv')
+            stress_data = pd.read_csv('analysis_results/infrastructure_stress_index.csv')
+            seasonality_data = pd.read_csv('analysis_results/seasonality_analysis.csv')
+            migration_data = pd.read_csv('analysis_results/migration_hotspots.csv')
+            
+            # Set index for churn_data if it has state and district columns
+            if 'state' in churn_data.columns and 'district' in churn_data.columns:
+                churn_data = churn_data.set_index(['state', 'district'])
+            
+            return dashboard_data, churn_data, stress_data, seasonality_data, migration_data
+        except Exception as e:
+            st.warning(f"⚠️ Error loading data files: {str(e)}")
+            st.info("📊 Loading sample data for demonstration...")
+            return create_sample_data()
+    else:
+        st.info("""
+        📊 **Demo Mode Active**
+        
+        Analytics files not found. Displaying sample data for demonstration.
+        
+        **To use real data:**
+        1. Ensure data files are in `data/` folder
+        2. Run `python load_and_combine_data.py`
+        3. Run `python advanced_analytics.py`
+        4. Refresh this dashboard
+        """)
+        return create_sample_data()
 
 # Load data
 dashboard_data, churn_data, stress_data, seasonality_data, migration_data = load_dashboard_data()
